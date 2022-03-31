@@ -1,0 +1,320 @@
+#!/bin/python
+import paramiko
+from paramiko import SSHClient
+from datetime import date
+from datetime import datetime
+import os
+import getpass
+from tabulate import tabulate
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import smtplib
+import subprocess
+
+HOST = "mail.vecima.com"
+#SUBJECT = "Backup Status Report"
+#TO = "vl_admin@vecima.com"
+#FROM = "vl_admin@vecima.com"
+me = 'DHCP_BACKUP@vecima.com'
+server = 'mail.vecima.com'
+you = 'vl_admin@vecima.com'
+
+
+def write_log(path,log):
+    FILEWRITE = open(path, "a")
+    FILEWRITE.write(str(log) + "\n")
+    FILEWRITE.close()
+
+def write_table(path,h_count,s_status,f_status):
+
+    table1 = [['TOTAL NUMBER OF HOSTS', 'NUMBER OF SUCCESSFUL BACKUPS', 'NUMBER OF UNSUCCESSFUL BACKUPS'],
+              [str(h_count), str(s_status), str(f_status)]]
+
+    #return (tabulate(table1, tablefmt='fancy_grid'))
+    return(table1)
+
+def write_summary(path,h_count,s_status,f_status):
+    FILEWRITE = open(path, "a")
+    FILEWRITE.write('TOTAL NUMBER OF HOSTS:\t\t\t' +str(h_count) +'\n''NUMBER OF SUCCESSFUL BACKUPS:\t\t'+ str(s_status)+'\n' 'NUMBER OF UNSUCCESSFUL BACKUPS:\t\t'+ str(f_status)+'\n')
+    FILEWRITE.close()
+
+
+
+client = paramiko.SSHClient()
+client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+#dffdsfsdfdsdffsd
+
+server0  = {"host": "192.168.222.21", "username": "USERNAME", "password": "PASSWORD"}
+server1  = {"host": "192.168.224.21", "username": "USERNAME", "password": "PASSWORD"}
+server2  = {"host": "192.168.225.21", "username": "USERNAME", "password": "PASSWORD"}
+server3  = {"host": "192.168.226.21", "username": "USERNAME", "password": "PASSWORD"}
+#server4  = {"host": "192.168.228.21", "username": "USERNAME", "password": "PASSWORD"}
+server5  = {"host": "192.168.234.21", "username": "USERNAME", "password": "PASSWORD"}
+server6  = {"host": "192.168.238.21", "username": "USERNAME", "password": "PASSWORD"}
+server7  = {"host": "192.168.239.21", "username": "USERNAME", "password": "PASSWORD"}
+
+
+
+
+
+All_servers = {
+               #"222_Network":server0,
+               #"224_Network":server1,
+               #"225_Network":server2,
+               #"226_Network":server3,
+               #"228_Network":server4,
+               #"234_Network":server5,
+               #"238_Network":server6,
+               "239_Network":server7
+               }
+
+
+
+success = 0
+failures = 0
+DEVICESCOUNT = len(All_servers.keys())
+
+
+for item in All_servers.items():
+    try:
+        hostname = item[0]
+        ip = list(item[1].values())[0]
+        uname = list(item[1].values())[1]
+        passwd = list(item[1].values())[2]
+        #fname = hostname + '_' + ip
+        fname=hostname
+        remote_host_user='USER'
+        remote_host_password='PASSWORD'
+        remote_host_ip='192.168.223.197'
+
+        # print (ip)
+        # print(uname)
+        # print(passwd)
+        # print(hostname)
+        # print(fname)
+
+        now = datetime.now()
+        current_time = now.strftime("%H:%M:%S")
+        current_time1= now.strftime("%H:%M")
+
+        current_year = now.strftime('%Y')
+        current_month = now.strftime('%b')
+        current_day = now.strftime('%d')
+        current_date=now.date()
+        #print(current_year)
+        #print(current_month)
+        #print(current_day)
+        #print(current_time)
+        #print(current_date)
+        today = date.today()
+        #print (today)
+        #filename=(fname+'_'+str(current_date))+'.tar.gz'
+        filename = fname +  '.tar.gz'
+        #filename=(fname+'_'+str(current_date))
+        #filename=fname
+        #print(filename)
+        DNAME = (item[0] + "_" + str(today) )
+        # print('dname issssss'+DNAME)
+        BACKUP_LOCATION='/etc/dhcp '
+
+        PATH0 = "/VECIMA/DHCP_BACKUP"
+
+        FILEPATH = PATH0
+        print(FILEPATH)
+        dir0=(current_day +current_month+current_year)
+        print (dir0)
+        FILEPATH0 = FILEPATH + "/"+dir0
+        print(FILEPATH0)
+
+
+
+       # FILEPATH1 = FILEPATH0 + "/" + current_month
+       # print(FILEPATH1)
+       # FILEPATH2 = FILEPATH1 + "/" + current_day
+       # print(FILEPATH2)
+
+
+        if not os.path.exists(FILEPATH0):
+            os.makedirs(FILEPATH0)
+        #if not os.path.exists(FILEPATH1):
+        #   os.makedirs(FILEPATH1)
+        #if not os.path.exists(FILEPATH2):
+        #    os.makedirs(FILEPATH2)
+        #    FULLNAME = os.path.join(FILEPATH, DNAME)
+            # if not os.path.exists(FILEPATH):
+            #    os.makedirs(FILEPATH)
+        #    FULLNAME = os.path.join(FILEPATH, DNAME)
+        else:
+            FULLNAME = os.path.join(FILEPATH, DNAME)
+
+        remote_location = FILEPATH0
+
+        LOGFILENAME = ("DHCP_log_" + str(today) +".txt")
+        print(LOGFILENAME)
+        LOG_FILEPATH = os.path.join(FILEPATH0,LOGFILENAME)
+        print(LOG_FILEPATH)
+
+        SUMMARYFILENAME = "DHCP_summary_" + str(today) + ".txt"
+        print(SUMMARYFILENAME)
+        SUMMARYFILEPATH = os.path.join(FILEPATH0,SUMMARYFILENAME)
+        print(SUMMARYFILEPATH)
+
+        subprocess.call(['chmod', '-R', '+w', FILEPATH0])
+
+        cmd1 = ('tar -zcvf ') +' /home/analysts/'+ filename + ' /etc/dhcp'
+        cmd2 = 'sshpass -p ' + '\'' + passwd + '\'' ' scp ' + filename +' '+ uname + '@' + remote_host_ip + ':'+ FILEPATH0+"/"
+        cmd3 = 'rm -r ' + filename
+        #cmd3= 'sshpass -p ' + '\'' + passwd + '\'' '  rsync -az '+BACKUP_LOCATION+'  ' + uname + '@' + remote_host_ip +':'+remote_location+filename
+        # print(cmd0)
+
+        cmd0 = {
+                "COMMAND1": cmd1,
+                "COMMAND2": cmd2
+                #"COMMAND3": cmd3
+                }
+
+
+
+        response = os.popen(f"ping {ip}").read()
+
+        if "Received = 4" in response:
+       # if "4 received" in response:
+            print("Host " + ip + " is reachable")
+            write_log(LOG_FILEPATH,"Host " + ip + " is reachable")
+            client = paramiko.client.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            try:
+
+                message=("Checking previous backups for "+hostname+" created in "+str(current_date))
+                print (message)
+                write_log(LOG_FILEPATH,message)
+                message=("Connecting to backup server "+ remote_host_ip)
+                print(message)
+                write_log(LOG_FILEPATH, message)
+                client.connect(remote_host_ip, username=remote_host_user, password=remote_host_password)
+                message=("Connected to backup server" + remote_host_ip)
+                print(message)
+                write_log(LOG_FILEPATH, message)
+                message =("Changing the current  directory to "+ FILEPATH0)
+                print(message)
+                write_log(LOG_FILEPATH,message)
+                #sftp = client.open_sftp()
+                #sftp.chdir("/home/analysts")
+                sftp = client.open_sftp()
+                sftp.chdir(FILEPATH0)
+                message = ("Current working directory is " + FILEPATH0)
+                print(message)
+                write_log(LOG_FILEPATH, message)
+                try:
+                    print("in try2 block")
+                    message = ("Checking if backup file was created before for " + filename)
+                    print(message)
+                    write_log(LOG_FILEPATH, message)
+                    #print(sftp.stat('/home/analysts/1.txt'))
+                    #print('file exists')
+                    x=(FILEPATH0+"/"+filename)
+                    print(x)
+                    file_status=(sftp.stat(x))
+                    print (file_status)
+                    message = ("File exists " + filename)
+                    print(message)
+                    write_log(LOG_FILEPATH, message)
+                    client.close()
+                    success = success + 1
+
+
+
+                except:
+                    print("in except2 block")
+                    message = ("File doesn't exist "+filename+ " creating backup for " + hostname)
+                    print(message)
+                    write_log(LOG_FILEPATH, message)
+                    client.connect(ip, username=uname, password=passwd)
+                    print("Connected to " + ip)
+                    write_log(LOG_FILEPATH,"Connected to "+ ip)
+                    for item in cmd0.items():
+                        write_log(LOG_FILEPATH, item[1])
+                        write_log(LOG_FILEPATH, item[0])
+                        _stdin, _stdout, _stderr = client.exec_command(item[1])
+                        print(item[1])
+                        write_log(LOG_FILEPATH, item[1])
+                        print(_stdout.read().decode())
+                        write_log(LOG_FILEPATH, _stdout)
+
+                    client.close()
+                    success = success + 1
+            except:
+                ptint("errrrrrrrrrrrrrrrrrrrrr")
+        else:
+            print("Host " + ip + " is not reachable")
+            failures = failures + 1
+    except:
+       print("Host " + ip + " error>>>>>>>>>>")
+       failures = failures + 1
+
+table1=write_table(SUMMARYFILEPATH,DEVICESCOUNT,success,failures)
+write_summary(SUMMARYFILEPATH,DEVICESCOUNT,success,failures)
+#print(table1)
+print(tabulate(table1, tablefmt='fancy_grid'))
+
+
+'''
+
+text = """
+"Vecima automated script for creating Backups of DHCP configuration using python + parmiko library."
+
+
+VECIMA DHCP BACKUP STATUS REPORT:
+
+{table}
+
+Location: Z:\TestSystemsBackup\Cisco
+For unsuccessful backups please check the detailed log file in the mentioned location
+
+"""
+
+html = """
+<html>
+<head>
+<style> 
+  table, th, td {{ border: 1px solid black; border-collapse: collapse; }}
+  th, td {{ padding: 5px; }}
+</style>
+</head>
+<body><p>"Vecima automated script for creating Backups of DHCP configuration using python + parmiko library."
+</p>
+<p>VECIMA DHCP BACKUP STATUS REPORT:</p>
+{table}
+<p>Location: Z:\TestSystemsBackup\Cisco</p>
+<p>For unsuccessful backups please check the detailed log file in the mentioned location</p>
+</body></html>
+"""
+
+text = text.format(table=tabulate(table1, headers="firstrow", tablefmt="grid"))
+html = html.format(table=tabulate(table1, headers="firstrow", tablefmt="html"))
+
+message = MIMEMultipart(
+    "alternative", None, [MIMEText(text), MIMEText(html,'html')])
+
+message['Subject'] = "DHCP BACKUP STATUS REPORT"
+message['From'] = me
+message['To'] = you
+
+server = smtplib.SMTP(server)
+#server.sendmail(FROM, [TO], BODY)
+server.sendmail(me, you, message.as_string())
+server.quit()
+
+
+##ifconfig | grep -A 1 ens160 | grep inet | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -1 | cut -d \':\' -f 2 | cut -d ' ' -f 2
+# cd4='sshpass - p \'$#videoL48\'  scp mib2zabbix analysts @ 192.168.223.197:/home/analysts/bast/hhhh.fff'
+# cd1='tar -zcvf backups4.tar.gz backups'
+#rsync -az /home/analysts/ed11/ analysts@192.168.223.197:/home/analysts
+
+#response = os.popen(f"ping -c 4 {SP_IP}").read()
+
+#if "4 received" in response:
+
+
+'''
